@@ -1,0 +1,16 @@
+.env
+.venv
+__pycache__/
+**/__pycache__/
+*.pyc
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.langgraph_api
+data/
+reports/
+tests/
+docker/
+*.egg-info/
+Dockerfile
+.dockerignore

@@ -1,1 +1,16 @@
+# Legacy / tool caches
 /.encore
+
+# Tool-managed agent skill caches (do not commit third-party skill packs)
+.agents/
+.claude/
+agent/
+Anthropic-Cybersecurity-Skills/
+avoid-ai-writing/
+skills-lock.json
+
+# Local project notes may contain credentials
+/AGENTS.md
+
+# frontend/ is a separate git repository; do not embed
+/frontend

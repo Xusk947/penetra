@@ -1,0 +1,113 @@
+# Coolify deployment (Docker Compose build pack).
+#
+# Public exposure model:
+#   - `frontend` is the ONLY public service. The magic variable
+#     `SERVICE_FQDN_FRONTEND_3000` makes Coolify generate a domain from the
+#     server's wildcard domain (https://<random>.<wildcard>) and route proxy
+#     traffic to container port 3000. You can replace the generated value with
+#     your own domain in the Coolify UI.
+#   - `backend` has NO published ports and NO domain/FQDN, so Coolify's proxy
+#     never routes external traffic to it. It is reachable ONLY from inside
+#     the stack's private network as http://backend:2024 — which is exactly
+#     what the frontend uses (BACKEND_URL below).
+#
+# Variables referenced as ${VAR} / ${VAR:-default} / ${VAR:?} below become
+# editable environment variables in the Coolify UI (see .env.example).
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      # --- LLM (OpenRouter) ---
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:?}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-tencent/hy3}
+      - OPENROUTER_API_BASE=${OPENROUTER_API_BASE:-https://openrouter.ai/api/v1}
+      # --- Optional LangSmith tracing ---
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-pentest-agents}
+      # --- Runtime ---
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # --- Authorized target configuration ---
+      - TARGET_HOST=${TARGET_HOST:?}
+      - TARGET_URL=${TARGET_URL:?}
+      - TARGET_USERNAME=${TARGET_USERNAME:-}
+      - TARGET_PASSWORD=${TARGET_PASSWORD:-}
+      - TARGET_ADMIN_USERNAME=${TARGET_ADMIN_USERNAME:-}
+      - TARGET_ADMIN_PASSWORD=${TARGET_ADMIN_PASSWORD:-}
+      # --- Centralized scope policy ---
+      - ALLOWED_TARGETS=${ALLOWED_TARGETS:?}
+      - DENIED_TARGETS=${DENIED_TARGETS:-}
+      - RESEARCH_ALLOWED_TARGETS=${RESEARCH_ALLOWED_TARGETS:-}
+      - NMAP_ALLOWED_TARGETS=${NMAP_ALLOWED_TARGETS:-}
+      - EXPLOIT_ALLOWED_TARGETS=${EXPLOIT_ALLOWED_TARGETS:-}
+      - BLOCK_PRIVATE_IPS=${BLOCK_PRIVATE_IPS:-true}
+      # --- Exploitation simulation safety ---
+      - EXPLOIT_EXECUTE=${EXPLOIT_EXECUTE:-false}
+      - EXPLOIT_SANDBOX=${EXPLOIT_SANDBOX:-true}
+      # --- Nmap (runs through the host Docker daemon, see socket mount) ---
+      - NMAP_MOCK=${NMAP_MOCK:-false}
+      - NMAP_USE_DOCKER=${NMAP_USE_DOCKER:-true}
+      - NMAP_DOCKER_IMAGE=${NMAP_DOCKER_IMAGE:-instrumentisto/nmap}
+      - NMAP_DOCKER_NETWORK=${NMAP_DOCKER_NETWORK:-host}
+      - NMAP_POLICY=${NMAP_POLICY:-safe}
+      # --- Python sandbox ---
+      - PYTHON_USE_DOCKER=${PYTHON_USE_DOCKER:-true}
+      - PYTHON_DOCKER_IMAGE=${PYTHON_DOCKER_IMAGE:-python:3.12-slim}
+      # --- Research browser / OSINT ---
+      - RESEARCH_MOCK=${RESEARCH_MOCK:-false}
+      - OSINT_MOCK=${OSINT_MOCK:-false}
+      - CENSYS_API_ID=${CENSYS_API_ID:-}
+      - CENSYS_API_SECRET=${CENSYS_API_SECRET:-}
+      - CHAOS_API_KEY=${CHAOS_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - SECURITYTRAILS_API_KEY=${SECURITYTRAILS_API_KEY:-}
+      - IPINFO_TOKEN=${IPINFO_TOKEN:-}
+    volumes:
+      # SQLite checkpoints + reports DB
+      - backend-data:/app/data
+      # Generated markdown/PDF reports and run logs
+      - backend-reports:/app/reports
+      # Host Docker daemon so nmap / python_sandbox can spawn their
+      # short-lived tool containers. NOTE: this is root-equivalent access to
+      # the host; required by design for the pentest tools. Remove this mount
+      # and set NMAP_MOCK=true / PYTHON_USE_DOCKER=false to disable.
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      # Custom route from reports_api.py mounted via langgraph.json http.app
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:2024/reports?limit=1', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    # No `ports:` and no SERVICE_FQDN_* — strictly internal on purpose.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      # Coolify magic variable: auto-generates the public domain for this
+      # service and routes the proxy to container port 3000. This is the ONLY
+      # publicly exposed service in the stack.
+      - SERVICE_FQDN_FRONTEND_3000
+      # Server-side (loaders/actions) base URL of the LangGraph API.
+      # Goes over the private stack network; never exposed publicly.
+      - BACKEND_URL=http://backend:2024
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  backend-reports:

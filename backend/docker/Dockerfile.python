@@ -1,0 +1,18 @@
+# Hardened Python sandbox image for the python_sandbox tool.
+#
+# Build with:
+#   docker build -t pentest-python-sandbox -f docker/Dockerfile.python .
+#
+# Then set in .env:
+#   PYTHON_DOCKER_IMAGE=pentest-python-sandbox
+
+FROM python:3.12-slim
+
+# Run as a non-root user for defence in depth.
+RUN groupadd -r sandbox && useradd -r -g sandbox -d /code -s /sbin/nologin sandbox
+
+WORKDIR /code
+USER sandbox
+
+# Default command: execute the mounted script.
+CMD ["python", "/code/script.py"]

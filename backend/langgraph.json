@@ -1,0 +1,22 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "orchestrator": "./agents/orchestrator/agent.py:graph",
+    "client": "./agents/client/agent.py:graph",
+    "server": "./agents/server/agent.py:graph",
+    "iot": "./agents/iot/agent.py:graph",
+    "research": "./agents/research/agent.py:graph",
+    "reporter": "./agents/reporter/agent.py:graph",
+    "frontdesk": "./agents/frontdesk/agent.py:make_graph",
+    "osint": "./agents/osint/agent.py:graph"
+  },
+  "env": "./.env",
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "http": {
+    "app": "./reports_api.py:app"
+  }
+}

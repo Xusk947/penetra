@@ -17,25 +17,18 @@ from tools.osint.tools import get_osint_tools_summary
 
 
 def _load_writing_style_skill() -> str:
-    """Load the avoid-ai-writing SKILL.md from known locations, if present.
+    """Return a short writing-style note for the frontdesk prompt.
 
-    The project copy at the repository root is preferred; fall back to the
-    Claude skills directory so the same file can be picked up in different
-    environments.
+    Loading the full avoid-ai-writing SKILL.md (~75 KB) into every frontdesk
+    call bloats the prompt to ~19k tokens and makes even simple messages slow.
+    We keep only the practical takeaway: be direct, avoid AI clichés, and write
+    in the user's language.
     """
-    candidates = [
-        Path(__file__).resolve().parents[3] / "avoid-ai-writing" / "SKILL.md",
-        Path(__file__).resolve().parents[3]
-        / ".claude"
-        / "skills"
-        / "avoid-ai-writing"
-        / "SKILL.md",
-        Path.home() / ".claude" / "skills" / "avoid-ai-writing" / "SKILL.md",
-    ]
-    for path in candidates:
-        if path.exists():
-            return path.read_text(encoding="utf-8").strip()
-    return ""
+    return (
+        "Write in the user's language. Be direct and concise. "
+        "Avoid generic AI phrases like 'delve', 'leverage', 'in today's digital age', "
+        "or over-confident claims. Answer only what was asked."
+    )
 
 
 def _build_system_prompt() -> str:

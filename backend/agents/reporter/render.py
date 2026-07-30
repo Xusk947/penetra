@@ -99,7 +99,8 @@ def localize_report(
         logger.warning("Report localization returned non-string content; using English.")
         return report
 
-    return localized.strip() or report
+    localized = _strip_markdown_fences(localized)
+    return localized or report
 
 
 _FINDING_PROSE_FIELDS = ("title", "description", "remediation", "steps")
@@ -111,6 +112,16 @@ def _extract_json(text: str) -> Any:
     if text.startswith("```"):
         text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
     return json.loads(text)
+
+
+def _strip_markdown_fences(text: str) -> str:
+    """Remove leading/trailing markdown code fences from a model response."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+    if text.rstrip().endswith("```"):
+        text = text.rstrip().rsplit("\n", 1)[0]
+    return text.strip()
 
 
 def localize_findings(

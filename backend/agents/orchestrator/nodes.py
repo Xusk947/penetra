@@ -6,6 +6,7 @@ import logging
 import uuid
 from typing import Any
 
+import httpx
 from langchain_core.callbacks import dispatch_custom_event
 from pydantic import BaseModel
 
@@ -128,6 +129,30 @@ class Orchestrator:
         self._iot = build_iot_graph(settings)
         self._reporter = build_reporter_graph(settings)
 
+    async def _preflight_check(self, state: OrchestratorState) -> str | None:
+        """Quick reachability check for every scope target.
+
+        Returns an error message if none of the targets respond within a short
+        timeout, so a down target fails fast instead of hanging the worker.
+        """
+        for target in state.scope:
+            if target.startswith(("http://", "https://")):
+                url = target
+            else:
+                url = f"https://{target}"
+            try:
+                async with httpx.AsyncClient(
+                    timeout=5.0, follow_redirects=False, verify=False
+                ) as client:
+                    await client.get(url)
+                return None
+            except Exception as exc:
+                logger.warning("Preflight check failed for %s: %s", url, exc)
+        return (
+            f"Target scope is unreachable: {state.scope}. "
+            "Check the target is online and try again."
+        )
+
     def validate_scope(self, state: OrchestratorState) -> dict[str, Any]:
         """Confirm the requested scope is within the approved allowlist."""
         logger.info("Validating scope: %s", state.scope)
@@ -206,6 +231,19 @@ class Orchestrator:
         if not state.approved:
             return {"error": "Scope validation failed; skipping analysis"}
 
+        if preflight_error := await self._preflight_check(state):
+            logger.error("Preflight failed: %s", preflight_error)
+            dispatch_custom_event(
+                "agent_update",
+                {
+                    "phase": "end",
+                    "agent": "orchestrator",
+                    "findings_count": 0,
+                    "error": preflight_error,
+                },
+            )
+            return {"error": preflight_error, "findings": []}
+
         dispatch_custom_event(
             "agent_update",
             {"phase": "start", "agent": "orchestrator", "scope": state.scope, "focus": state.focus},
@@ -243,6 +281,7 @@ class Orchestrator:
                     "scope": state.scope,
                     "findings": _dedup_findings(state.findings),
                     "language": state.language,
+                    "error": state.error,
                 },
                 config=_fresh_config(),
             )

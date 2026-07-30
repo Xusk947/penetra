@@ -664,8 +664,7 @@ function ChatPanel({ threadId }: { threadId?: string }) {
 
 
   const hasMessages = messages.length > 0
-  const showChatState =
-    hasMessages || (threadId !== undefined && !historyLoaded)
+  const showChatState = hasMessages || threadId !== undefined
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -695,7 +694,7 @@ function ChatPanel({ threadId }: { threadId?: string }) {
             placeholder={
               team.canRunScans
                 ? "Что проверим?"
-                : "Спроси про репорты (запуск сканов — только Admin/Enterprise)"
+                : "Можешь проверить систему?"
             }
           />
         </div>

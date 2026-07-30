@@ -29,6 +29,8 @@ class ReporterAgent:
 
     def generate(self, state: ReportState) -> dict[str, Any]:
         """Produce a human-readable summary from the collected findings."""
+        if state.error:
+            return {"report": f"## Scan Error\n\n{state.error}"}
         language = resolve_language(state.language)
         report = build_report_markdown(state.findings, state.scope)
         if language != "en":
@@ -61,6 +63,9 @@ class ReporterAgent:
             trace_path.write_text(render_finding_trace(finding), encoding="utf-8")
             finding_reports[finding.id] = str(trace_path)
 
+        if state.error:
+            return {"finding_reports": finding_reports}
+
         pdf_path = reports_dir / f"pentest_{run_stamp}.pdf"
         try:
             render_report_pdf(
@@ -68,7 +73,7 @@ class ReporterAgent:
                 state.findings,
                 pdf_path,
                 report_text=state.report,
-                language=self._resolve_language(state.language),
+                language=resolve_language(state.language),
             )
         except Exception as exc:
             logger.warning("Failed to render PDF report: %s", exc)

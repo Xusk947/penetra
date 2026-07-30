@@ -52,7 +52,7 @@ def _load_font_css(family: str, package_dir: Path) -> str:
         font_file = files_dir / filename
         return f"url(file://{font_file.as_posix()})"
 
-    return re.sub(r"url\(\./(files/[^\)]+)\)", _rewrite, css_text)
+    return re.sub(r"url\(\./files/([^\)]+)\)", _rewrite, css_text)
 
 
 def _font_faces() -> str:
@@ -103,20 +103,20 @@ def _build_html(
 {_FONT_FACES_CSS}
 
 :root {{
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.505 0.213 27.518);
-  --primary-foreground: oklch(0.971 0.013 17.38);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --primary: #c10007;
+  --primary-foreground: #fef2f2;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #e7000b;
+  --border: #e5e5e5;
   --radius: 0.625rem;
   --font-sans: 'Manrope Variable', 'Manrope', sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;

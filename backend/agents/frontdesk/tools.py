@@ -116,6 +116,53 @@ def _serialize_findings(raw_findings: Any) -> list[dict[str, Any]] | None:
     return serialized or None
 
 
+def _build_pentest_summary(
+    scope: list[str],
+    report_id: str,
+    log_path: str,
+    result: dict[str, Any],
+) -> str:
+    """Build a concise tool result for the frontdesk model.
+
+    The full report is persisted separately; the model only needs a compact
+    summary so long reports do not blow up the context window or fail to
+    stream back to the UI.
+    """
+    if error := result.get("error"):
+        return (
+            f"Pentest failed for {', '.join(scope)}.\n"
+            f"Error: {error}\n\n"
+            f"Report ID: {report_id}\n"
+            f"Report API: /reports/{report_id}\n"
+            f"Full run log: {log_path}"
+        )
+
+    findings = _serialize_findings(result.get("findings")) or []
+    lines = [f"Pentest scope: {', '.join(scope)}"]
+    lines.append(f"Findings: {len(findings)}")
+    if findings:
+        lines.append("")
+        lines.append("Findings summary:")
+        for finding in findings[:20]:
+            fid = finding.get("id") or "n/a"
+            title = finding.get("title") or "n/a"
+            severity = finding.get("severity") or "n/a"
+            category = finding.get("category") or "n/a"
+            confidence = finding.get("confidence") or "n/a"
+            lines.append(f"- [{fid}] {title} ({severity}, {category}, {confidence})")
+        if len(findings) > 20:
+            lines.append(f"- ... and {len(findings) - 20} more")
+    lines.append("")
+    lines.append(f"Report ID: {report_id}")
+    lines.append(f"Report API: /reports/{report_id}")
+    lines.append(f"Full run log: {log_path}")
+    if pdf_path := result.get("pdf_path"):
+        lines.append(f"PDF: {pdf_path}")
+    if finding_reports := result.get("finding_reports"):
+        lines.append(f"Per-finding mini-reports: {len(finding_reports)}")
+    return "\n".join(lines)
+
+
 def _persist_report(
     report_text: str,
     thread_id: str | None,
@@ -216,21 +263,7 @@ async def run_pentest(
         dict(result),
     )
 
-    notes = [
-        f"Report ID: {report_id}",
-        f"Report API: /reports/{report_id}",
-        f"Full run log (every agent/tool action, recorded live) saved at: {log_path}",
-    ]
-    if pdf_path := result.get("pdf_path"):
-        notes.append(f"A PDF copy of this report was saved locally at: {pdf_path}")
-    if finding_reports := result.get("finding_reports"):
-        notes.append(
-            f"Each of the {len(finding_reports)} findings has its own traceable "
-            "mini-report (finding ID, agent, tool, and discovery steps) saved under "
-            "reports/findings/<finding-id>.md."
-        )
-    report = report_text + "\n\n---\n" + "\n".join(notes)
-    return report
+    return _build_pentest_summary(scope, report_id, log_path, dict(result))
 
 
 @tool

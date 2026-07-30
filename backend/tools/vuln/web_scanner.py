@@ -54,7 +54,7 @@ class WebScanner:
             auth = httpx.BasicAuth(settings.target_username, settings.target_password)
 
         try:
-            self._client = httpx.Client(base_url=self.base_url or None, auth=auth, follow_redirects=False, timeout=15.0)
+            self._client = httpx.Client(base_url=self.base_url or None, auth=auth, follow_redirects=False, timeout=5.0)
         except Exception as exc:
             logger.warning("Failed to create HTTP client for %s: %s", self.base_url, exc)
             self._client = None

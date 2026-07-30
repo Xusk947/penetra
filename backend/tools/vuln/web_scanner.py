@@ -791,7 +791,7 @@ class WebScanner:
             return []
         blocked = False
         for form in forms:
-            for _ in range(15):
+            for _ in range(5):
                 resp = self._try_login(form, f"ratelimit_{uuid.uuid4().hex[:8]}", "wrongpassword")
                 if resp.status_code == 429 or any(m in resp.text.lower() for m in ("too many requests","rate limit exceeded","account locked","try again later","attempts exceeded","captcha","brute-force","temporary lock")):
                     blocked = True

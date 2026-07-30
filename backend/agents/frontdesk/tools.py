@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Annotated, Any
 
 import anyio
+from langchain.tools import ToolRuntime
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -22,13 +24,15 @@ from agents.orchestrator.graph import build_graph as build_orchestrator_graph
 from agents.orchestrator.state import OrchestratorState
 from agents.osint.graph import build_graph as build_osint_graph
 from agents.osint.state import OSINTState
+from agents.reporter.render import localize_findings, resolve_language
 from agents.research.graph import build_graph as build_research_graph
 from agents.research.state import ResearchState
 from db.reports import SessionLocal, init_db, save_report
 
 _LANGUAGE_DESC = (
     "ISO 639-1 language code for the report (e.g. 'en', 'ru', 'es'). "
-    "Use 'auto' to fall back to English."
+    "Use 'auto' to detect the language from the user's message "
+    "(fallback: English)."
 )
 _SCOPE_DESC = (
     "Approved target scope: list of IPs, hostnames or URLs. "
@@ -51,6 +55,52 @@ def _extract_thread_and_run_ids(
     thread_id = config.get("configurable", {}).get("thread_id")
     run_id = config.get("run_id") or config.get("configurable", {}).get("run_id")
     return thread_id, run_id
+
+
+_CYRILLIC_RE = re.compile(r"[Ѐ-ӿ]")
+
+
+def _message_text(content: Any) -> str:
+    """Flatten a message content value (string or block list) to plain text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return ""
+
+
+def _detect_user_language(runtime: ToolRuntime | None) -> str | None:
+    """Detect the report language from the last user message in agent state.
+
+    Deterministic fallback for when the LLM forgets to pass the ``language``
+    tool argument. Currently maps Cyrillic script to ``ru``; returns None
+    when no user message is found or no known script is detected.
+    """
+    if runtime is None:
+        return None
+    state = getattr(runtime, "state", None) or {}
+    messages = state.get("messages") if isinstance(state, dict) else None
+    if not messages:
+        return None
+    for message in reversed(messages):
+        if getattr(message, "type", None) not in ("human", "user"):
+            continue
+        text = _message_text(getattr(message, "content", ""))
+        if _CYRILLIC_RE.search(text):
+            return "ru"
+        return None
+    return None
+
+
+def _resolve_report_language(language: str | None, runtime: ToolRuntime | None) -> str:
+    """Resolve the report language, falling back to user-message detection."""
+    resolved = resolve_language(language)
+    if language and language.strip().lower() not in ("auto", ""):
+        return resolved
+    return _detect_user_language(runtime) or resolved
 
 
 def _serialize_findings(raw_findings: Any) -> list[dict[str, Any]] | None:
@@ -80,6 +130,10 @@ def _persist_report(
     init_db()
     with SessionLocal() as session:
         findings = _serialize_findings(result.get("findings"))
+        if findings and resolve_language(language) != "en":
+            # The frontend report page renders structured findings, so they
+            # must be localized too — the markdown alone is not enough.
+            findings = localize_findings(findings, language, Settings())
         findings_count = (
             len(findings)
             if findings is not None
@@ -117,12 +171,14 @@ async def run_pentest(
     language: str = "auto",
     focus: str = "all",
     config: RunnableConfig = None,  # type: ignore[assignment]
+    runtime: ToolRuntime = None,  # type: ignore[assignment]
 ) -> str:
     """Run the authorized pentest workflow and return a report.
 
     If *scope* is omitted, the configured `TARGET_HOST` from `.env` is used.
-    The report can be generated in a non-English language by passing the
-    *language* argument (e.g. 'ru' for Russian). 'auto' defaults to English.
+    The report is generated in the user's language: pass *language* explicitly
+    (e.g. 'ru' for Russian) or leave it as 'auto' to detect it from the
+    user's message (fallback: English).
 
     Use *focus* to tell the orchestrator which domain agents to run
     (e.g. 'backend' for server-side checks, 'client' for web UI checks,
@@ -131,6 +187,8 @@ async def run_pentest(
     if not scope:
         target = Settings().target_host or DEFAULT_PUBLIC_TARGET
         scope = [target]
+
+    language = _resolve_report_language(language, runtime)
 
     log_path = await anyio.to_thread.run_sync(configure_run_logging)
     orchestrator_graph = await anyio.to_thread.run_sync(

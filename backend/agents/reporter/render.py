@@ -7,7 +7,9 @@ localization) can be rebuilt after a manual findings edit (see
 
 from __future__ import annotations
 
+import json
 import logging
+from typing import Any
 
 from langchain_core.messages import HumanMessage
 
@@ -98,6 +100,86 @@ def localize_report(
         return report
 
     return localized.strip() or report
+
+
+_FINDING_PROSE_FIELDS = ("title", "description", "remediation", "steps")
+
+
+def _extract_json(text: str) -> Any:
+    """Parse JSON from a model response, tolerating markdown code fences."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+    return json.loads(text)
+
+
+def localize_findings(
+    findings: list[dict[str, Any]], language: str, settings: Settings | None = None
+) -> list[dict[str, Any]]:
+    """Translate the human-readable fields of structured *findings*.
+
+    The frontend report page renders structured findings (not the markdown),
+    so without this the cards would always stay in English. Translates
+    ``title``/``description``/``remediation``/``steps`` in a single batched
+    LLM call; falls back to the original findings on any failure.
+    """
+    language = resolve_language(language)
+    if language == "en" or not findings:
+        return findings
+
+    try:
+        model = get_chat_model(settings or Settings())
+    except RuntimeError as exc:
+        logger.warning("Cannot localize findings: %s. Using English.", exc)
+        return findings
+
+    payload = [
+        {
+            "id": finding.get("id"),
+            "title": finding.get("title"),
+            "description": finding.get("description"),
+            "remediation": finding.get("remediation"),
+            "steps": finding.get("steps") or [],
+        }
+        for finding in findings
+    ]
+    prompt = (
+        "Translate the following JSON array of pentest findings from English "
+        f"into the language identified by the ISO 639-1 code '{language}'. "
+        "Return a JSON array with the exact same length, order, keys and "
+        "'id' values. Translate only the 'title', 'description', "
+        "'remediation' and 'steps' prose. Keep URLs, IP addresses, file "
+        "paths, code snippets, commands, and credentials untranslated. "
+        "Return only valid JSON, no commentary.\n\n"
+        f"```json\n{json.dumps(payload, ensure_ascii=False)}\n```"
+    )
+    try:
+        response = model.invoke([HumanMessage(content=prompt)])
+        content = response.content
+        if not isinstance(content, str):
+            raise ValueError("non-string model response")
+        translated = _extract_json(content)
+        if not isinstance(translated, list) or len(translated) != len(findings):
+            raise ValueError("translated payload shape mismatch")
+        by_id = {
+            item.get("id"): item for item in translated if isinstance(item, dict)
+        }
+    except Exception as exc:
+        logger.warning("Findings localization failed: %s. Using English.", exc)
+        return findings
+
+    localized: list[dict[str, Any]] = []
+    for finding in findings:
+        item = by_id.get(finding.get("id"))
+        if not item:
+            localized.append(finding)
+            continue
+        merged = dict(finding)
+        for field in _FINDING_PROSE_FIELDS:
+            if item.get(field):
+                merged[field] = item[field]
+        localized.append(merged)
+    return localized
 
 
 def build_report_markdown(findings: list[Finding], scope: list[str]) -> str:

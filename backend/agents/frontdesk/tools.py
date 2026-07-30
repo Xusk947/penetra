@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from typing import Annotated, Any
@@ -10,7 +11,7 @@ import anyio
 from langchain.tools import ToolRuntime
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from agents.common.config import Settings
 from agents.common.constants import (
@@ -210,6 +211,28 @@ class RunPentestInput(BaseModel):
     scope: list[str] | None = Field(default=None, description=_SCOPE_DESC)
     language: str = Field(default="auto", description=_LANGUAGE_DESC)
     focus: str = Field(default="all", description=_FOCUS_DESC)
+
+    @field_validator("scope", mode="before")
+    @classmethod
+    def _parse_scope(cls, value: Any) -> list[str] | None:
+        """LLMs often emit a JSON string or comma-separated string for scope."""
+        if value is None:
+            return None
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return None
+            if text.startswith("[") and text.endswith("]"):
+                try:
+                    parsed = json.loads(text)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                except json.JSONDecodeError:
+                    pass
+            return [item.strip() for item in text.split(",") if item.strip()]
+        return value
 
 
 @tool(args_schema=RunPentestInput, infer_schema=False)

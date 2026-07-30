@@ -4,10 +4,12 @@ import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
+  Cancel01Icon,
   Chat01Icon,
   CheckmarkBadge01Icon,
   Delete01Icon,
   File01Icon,
+  Menu01Icon,
 } from "@hugeicons/core-free-icons"
 
 import { ConfirmDialog } from "~/components/confirm-dialog"
@@ -66,7 +68,13 @@ function SidebarSkeleton({ count = 5 }: { count?: number }) {
   )
 }
 
-export function Sidebar() {
+export function Sidebar({
+  isOpen,
+  onToggle,
+}: {
+  isOpen: boolean
+  onToggle: () => void
+}) {
   const navigate = useNavigate()
   const { team } = useTeam()
   const { tab, threadId, reportId, path } = useActiveRoute()
@@ -112,10 +120,16 @@ export function Sidebar() {
       localStorage.setItem("threadId", id)
     }
     navigate(`/chat/${id}`, { replace: true })
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      onToggle()
+    }
   }
 
   const handleSelectReport = (id: string) => {
     navigate(`/reports/${id}`, { replace: true })
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      onToggle()
+    }
   }
 
   const handleDeleteThread = async (id: string) => {
@@ -169,11 +183,36 @@ export function Sidebar() {
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
 
+  if (!isOpen) {
+    return (
+      <aside className="hidden h-svh w-14 flex-col items-center border-r border-border bg-muted/50 pt-3 lg:flex">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex items-center justify-center rounded-md p-2 text-foreground hover:bg-muted"
+          aria-label="Открыть боковую панель"
+        >
+          <HugeiconsIcon icon={Menu01Icon} className="size-5" />
+        </button>
+      </aside>
+    )
+  }
+
   return (
-    <aside className="flex h-svh w-64 flex-col bg-muted/50">
+    <aside className="fixed left-0 top-0 z-50 flex h-svh w-64 flex-col bg-muted/50 lg:static">
       <div className="px-3 pt-3 pb-1">
-        <div className="font-heading text-base font-semibold tracking-tight">
-          Penetra
+        <div className="flex items-center justify-between">
+          <div className="font-heading text-base font-semibold tracking-tight">
+            Penetra
+          </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Свернуть боковую панель"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+          </button>
         </div>
       </div>
       <div className="px-2 pb-1">
@@ -281,7 +320,7 @@ export function Sidebar() {
                           })
                         }
                         className={cn(
-                          "flex items-center justify-center p-2 opacity-70 transition-opacity hover:opacity-100",
+                          "flex items-center justify-center p-2 opacity-70 transition-opacity lg:opacity-0 lg:group-hover:opacity-100",
                           isActive
                             ? "text-primary-foreground hover:text-white"
                             : "text-muted-foreground hover:text-destructive"
@@ -372,7 +411,7 @@ export function Sidebar() {
                         })
                       }
                       className={cn(
-                        "flex items-center justify-center p-2 opacity-70 transition-opacity hover:opacity-100",
+                        "flex items-center justify-center p-2 opacity-70 transition-opacity lg:opacity-0 lg:group-hover:opacity-100",
                         isActive
                           ? "text-primary-foreground hover:text-white"
                           : "text-muted-foreground hover:text-destructive"

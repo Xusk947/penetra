@@ -510,8 +510,8 @@ export default function Report() {
 
   return (
     <div className="relative flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-[1.75rem] bg-card">
-      <div className="flex items-center justify-between gap-2 border-b p-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex flex-col gap-2 border-b p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
           <div className="truncate font-heading text-sm font-medium">
             {report.title}
           </div>
@@ -532,7 +532,7 @@ export default function Report() {
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {team.canVerify && !editing && (
             <button
               type="button"
@@ -621,7 +621,7 @@ export default function Report() {
                 }}
               >
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
                     <div className="min-w-0 flex-1">
                       <CardTitle className="text-sm leading-tight font-medium">
                         {finding.title}
@@ -630,7 +630,7 @@ export default function Report() {
                         {finding.findingId ?? finding.id}
                       </CardDescription>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex shrink-0 flex-wrap items-center gap-1">
                       <SimpleTooltip label={severity.description}>
                         <span
                           className={cn(

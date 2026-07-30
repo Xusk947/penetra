@@ -6,13 +6,20 @@ This Starlette app is mounted by the LangGraph dev server via the
 
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
 import anyio
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, PlainTextResponse
+from starlette.responses import (
+    FileResponse,
+    JSONResponse,
+    PlainTextResponse,
+    StreamingResponse,
+)
 from starlette.routing import Route
 
 from agents.common.config import Settings
@@ -23,6 +30,7 @@ from agents.reporter.render import (
     resolve_language,
 )
 from agents.reporter.trace import render_finding_trace
+from checkpointer import generate_checkpointer
 from db.reports import (
     SessionLocal,
     delete_report,
@@ -40,6 +48,16 @@ init_db()
 
 _BACKEND_DIR = Path(__file__).resolve().parent
 _PDF_DIR = _BACKEND_DIR / "reports" / "pdfs"
+
+_THREAD_MESSAGE_FIELDS = {"content", "id", "name", "tool_call_id", "tool_calls", "type"}
+
+
+def _prune_message(message: object) -> dict[str, Any]:
+    """Return only the fields the UI needs, dropping heavy reasoning metadata."""
+    if not hasattr(message, "model_dump"):
+        return {}
+    data = message.model_dump()
+    return {field: data[field] for field in _THREAD_MESSAGE_FIELDS if field in data}
 
 
 def _pdf_path_for_report(report_id: str) -> Path:
@@ -339,6 +357,57 @@ async def verify_report_endpoint(request: Request) -> JSONResponse:
     return JSONResponse(data)
 
 
+async def thread_live_endpoint(request: Request) -> StreamingResponse:
+    """SSE stream of the current thread state for live cross-device sync."""
+    thread_id = request.path_params["thread_id"]
+
+    async def _event_stream():
+        async with generate_checkpointer() as saver:
+            last_state: dict[str, Any] | None = None
+            while True:
+                checkpoint_tuple = await saver.aget_tuple(
+                    {"configurable": {"thread_id": thread_id}}
+                )
+                if checkpoint_tuple is None:
+                    state = {"messages": [], "title": None}
+                else:
+                    messages = (
+                        checkpoint_tuple.checkpoint.get("channel_values", {}).get(
+                            "messages"
+                        )
+                        or []
+                    )
+                    title = (
+                        checkpoint_tuple.metadata.get("title")
+                        if checkpoint_tuple.metadata
+                        else None
+                    )
+                    state = {
+                        "messages": [
+                            _prune_message(m)
+                            for m in messages
+                            if hasattr(m, "model_dump")
+                        ],
+                        "title": title,
+                    }
+
+                if state != last_state:
+                    last_state = state
+                    data = json.dumps(state, ensure_ascii=False)
+                    yield f"data: {data}\n\n".encode("utf-8")
+
+                await asyncio.sleep(1)
+
+    return StreamingResponse(
+        _event_stream(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+
 routes = [
     Route("/reports", list_reports_endpoint, methods=["GET"]),
     Route("/reports/{report_id}", get_report_endpoint, methods=["GET"]),
@@ -348,6 +417,7 @@ routes = [
     Route("/reports/{report_id}/pdf", view_pdf_endpoint, methods=["GET"]),
     Route("/reports/{report_id}/pdf", prepare_pdf_endpoint, methods=["POST"]),
     Route("/reports/{report_id}/verify", verify_report_endpoint, methods=["POST"]),
+    Route("/threads/{thread_id}/live", thread_live_endpoint, methods=["GET"]),
 ]
 
 app = Starlette(routes=routes)

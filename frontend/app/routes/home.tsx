@@ -22,6 +22,10 @@ import { ChatLoader, type ChatLoaderStatus } from "~/components/chat-loader"
 import { Markdown } from "~/components/markdown"
 import { PromptForm } from "~/components/prompt-form"
 import { ScrollArea } from "~/components/ui/scroll-area"
+import {
+  buildToolResultMap,
+  langGraphMessageToUIMessage,
+} from "~/lib/messages"
 import { useTeam } from "~/lib/team"
 import { cn } from "~/lib/utils"
 
@@ -613,33 +617,51 @@ function ChatPanel({ threadId }: { threadId?: string }) {
   const messagesRef = useRef(messages)
   messagesRef.current = messages
 
+  const historyLoadedRef = useRef(historyLoaded)
+  historyLoadedRef.current = historyLoaded
+
   useEffect(() => {
     if (threadId === undefined || status !== "ready") return
 
-    const interval = setInterval(() => {
-      fetch(`/api/chat/history?threadId=${encodeURIComponent(threadId)}`)
-        .then((response) => response.json())
-        .then(
-          ({
-            messages: history,
-            title: historyTitle,
-          }: {
-            messages: UIMessage[]
-            title: string | null
-          }) => {
-            if (JSON.stringify(history) !== JSON.stringify(messagesRef.current)) {
-              if (Array.isArray(history) && history.length > 0) {
-                setMessages(history)
-              }
-              setTitle(historyTitle ?? null)
-            }
-          }
-        )
-        .catch(() => {})
-    }, 2000)
+    const source = new EventSource(
+      `/api/chat/live?threadId=${encodeURIComponent(threadId)}`
+    )
 
-    return () => clearInterval(interval)
-  }, [threadId, status, setMessages, setTitle])
+    source.onmessage = (event) => {
+      try {
+        const { messages: history, title: historyTitle } = JSON.parse(
+          event.data
+        ) as {
+          messages: unknown[]
+          title: string | null
+        }
+
+        const toolResults = buildToolResultMap(history)
+        const newMessages: UIMessage[] = []
+        for (const message of history) {
+          const uiMessage = langGraphMessageToUIMessage(message, toolResults)
+          if (uiMessage) newMessages.push(uiMessage)
+        }
+
+        if (JSON.stringify(newMessages) !== JSON.stringify(messagesRef.current)) {
+          if (Array.isArray(newMessages) && newMessages.length > 0) {
+            setMessages(newMessages)
+          }
+          setTitle(historyTitle ?? null)
+        }
+
+        if (!historyLoadedRef.current) {
+          setHistoryLoaded(true)
+        }
+      } catch {
+        // ignore malformed events
+      }
+    }
+
+    return () => source.close()
+  }, [threadId, status, setMessages, setTitle, setHistoryLoaded])
+
+
 
   const hasMessages = messages.length > 0
   const showChatState =

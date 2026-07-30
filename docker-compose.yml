@@ -39,10 +39,12 @@ services:
       - TARGET_ADMIN_PASSWORD=${TARGET_ADMIN_PASSWORD:-}
       # --- Centralized scope policy ---
       - ALLOWED_TARGETS=${ALLOWED_TARGETS:?}
-      - DENIED_TARGETS=${DENIED_TARGETS:-}
-      - RESEARCH_ALLOWED_TARGETS=${RESEARCH_ALLOWED_TARGETS:-}
-      - NMAP_ALLOWED_TARGETS=${NMAP_ALLOWED_TARGETS:-}
-      - EXPLOIT_ALLOWED_TARGETS=${EXPLOIT_ALLOWED_TARGETS:-}
+      # List-typed vars default to an empty JSON array (`[]` parses to the
+      # same empty list pydantic-settings uses when the var is unset).
+      - DENIED_TARGETS=${DENIED_TARGETS:-[]}
+      - RESEARCH_ALLOWED_TARGETS=${RESEARCH_ALLOWED_TARGETS:-[]}
+      - NMAP_ALLOWED_TARGETS=${NMAP_ALLOWED_TARGETS:-[]}
+      - EXPLOIT_ALLOWED_TARGETS=${EXPLOIT_ALLOWED_TARGETS:-[]}
       - BLOCK_PRIVATE_IPS=${BLOCK_PRIVATE_IPS:-true}
       # --- Exploitation simulation safety ---
       - EXPLOIT_EXECUTE=${EXPLOIT_EXECUTE:-false}

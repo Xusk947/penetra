@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +13,10 @@ class Settings(BaseSettings):
         env_file=None,
         env_file_encoding="utf-8",
         extra="ignore",
+        # Treat empty-string env vars as None so list-typed fields don't
+        # crash on json.loads(""). Coolify passes unset list vars as "" via
+        # its env_file mechanism, bypassing docker-compose ${VAR:-[]} interp.
+        env_parse_none_str="",
     )
 
     openai_api_key: str | None = None
@@ -53,6 +57,16 @@ class Settings(BaseSettings):
     denied_targets: list[str] = Field(default_factory=list)
     research_allowed_targets: list[str] = Field(default_factory=list)
     block_private_ips: bool = True
+
+    # None (from empty-string env vars via env_parse_none_str) → empty list.
+    _none_to_empty_list = field_validator(
+        "nmap_allowed_targets",
+        "exploit_allowed_targets",
+        "allowed_targets",
+        "denied_targets",
+        "research_allowed_targets",
+        mode="before",
+    )(lambda v: [] if v is None else v)
 
     # Research browser
     research_mock: bool = True

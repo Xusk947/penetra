@@ -12,5 +12,3 @@ skills-lock.json
 # Local project notes may contain credentials
 /AGENTS.md
 
-# frontend/ is a separate git repository; do not embed
-/frontend

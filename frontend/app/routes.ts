@@ -14,6 +14,7 @@ export default [
 
   route("api/chat", "routes/api.chat.tsx"),
   route("api/chat/history", "routes/api.chat.history.tsx"),
+  route("api/chat/live", "routes/api.chat.live.tsx"),
   route("api/chat/threads", "routes/api.chat.threads.tsx"),
   route("api/chat/threads/:threadId", "routes/api.chat.thread.tsx"),
   route("api/reports", "routes/api.reports.tsx"),

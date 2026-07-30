@@ -610,6 +610,37 @@ function ChatPanel({ threadId }: { threadId?: string }) {
     }
   }, [messages, status])
 
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+
+  useEffect(() => {
+    if (threadId === undefined || status !== "ready") return
+
+    const interval = setInterval(() => {
+      fetch(`/api/chat/history?threadId=${encodeURIComponent(threadId)}`)
+        .then((response) => response.json())
+        .then(
+          ({
+            messages: history,
+            title: historyTitle,
+          }: {
+            messages: UIMessage[]
+            title: string | null
+          }) => {
+            if (JSON.stringify(history) !== JSON.stringify(messagesRef.current)) {
+              if (Array.isArray(history) && history.length > 0) {
+                setMessages(history)
+              }
+              setTitle(historyTitle ?? null)
+            }
+          }
+        )
+        .catch(() => {})
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [threadId, status, setMessages, setTitle])
+
   const hasMessages = messages.length > 0
   const showChatState =
     hasMessages || (threadId !== undefined && !historyLoaded)
@@ -619,7 +650,7 @@ function ChatPanel({ threadId }: { threadId?: string }) {
     const text = input.trim()
     if (!text || status !== "ready") return
 
-    sendMessage({ text }, { body: { team: team.id } })
+    sendMessage({ text }, { body: { team: team.id, id: chatId } })
     setInput("")
   }
 

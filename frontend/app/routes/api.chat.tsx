@@ -330,6 +330,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const body = (await request.json()) as {
     messages?: UIMessage[]
     id?: string
+    threadId?: string
     team?: string
   }
   const messages = body.messages ?? []
@@ -338,7 +339,7 @@ export async function action({ request }: ActionFunctionArgs) {
     return createDataStream("Ошибка: не получено ни одного сообщения.")
   }
 
-  const threadId = body.id ?? crypto.randomUUID()
+  const threadId = body.id ?? body.threadId ?? crypto.randomUUID()
   const title = buildChatTitle(messages)
   const backendUrl = process.env.BACKEND_URL ?? DEFAULT_BACKEND_URL
 

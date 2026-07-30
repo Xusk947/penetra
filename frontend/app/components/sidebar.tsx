@@ -185,7 +185,7 @@ export function Sidebar({
 
   if (!isOpen) {
     return (
-      <aside className="hidden h-svh w-14 flex-col items-center border-r border-border bg-muted/50 pt-3 lg:flex">
+      <aside className="hidden h-svh w-14 flex-col items-center border-r border-border bg-card pt-3 lg:flex">
         <button
           type="button"
           onClick={onToggle}
@@ -199,7 +199,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-50 flex h-svh w-64 flex-col bg-muted/50 lg:static">
+    <aside className="fixed left-0 top-0 z-50 flex h-svh w-64 flex-col bg-card lg:static">
       <div className="px-3 pt-3 pb-1">
         <div className="flex items-center justify-between">
           <div className="font-heading text-base font-semibold tracking-tight">

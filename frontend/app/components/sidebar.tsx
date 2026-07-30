@@ -281,7 +281,7 @@ export function Sidebar() {
                           })
                         }
                         className={cn(
-                          "flex items-center justify-center p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100",
+                          "flex items-center justify-center p-2 opacity-70 transition-opacity hover:opacity-100",
                           isActive
                             ? "text-primary-foreground hover:text-white"
                             : "text-muted-foreground hover:text-destructive"
@@ -372,7 +372,7 @@ export function Sidebar() {
                         })
                       }
                       className={cn(
-                        "flex items-center justify-center p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100",
+                        "flex items-center justify-center p-2 opacity-70 transition-opacity hover:opacity-100",
                         isActive
                           ? "text-primary-foreground hover:text-white"
                           : "text-muted-foreground hover:text-destructive"

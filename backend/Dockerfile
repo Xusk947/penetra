@@ -36,12 +36,12 @@ COPY . .
 RUN pip install ".[dev]" \
     && playwright install --with-deps chromium \
     && touch .env \
-    && mkdir -p /app/data /app/reports
+    && mkdir -p /app/data /app/reports /app/.langgraph_api
 
-# Persistent state (SQLite checkpoints + reports DB) and generated reports are
-# expected to be mounted as volumes by the compose stack:
-#   /app/data     -> backend-data
-#   /app/reports  -> backend-reports
+# Persistent state expected to be mounted as volumes by the compose stack:
+#   /app/data            -> backend-data (SQLite checkpoints + reports DB)
+#   /app/reports         -> backend-reports (markdown/PDF reports + run logs)
+#   /app/.langgraph_api  -> backend-langgraph-api (thread/run registry)
 
 EXPOSE 2024
 

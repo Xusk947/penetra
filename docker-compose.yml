@@ -72,6 +72,10 @@ services:
       - backend-data:/app/data
       # Generated markdown/PDF reports and run logs
       - backend-reports:/app/reports
+      # LangGraph dev server persistence (thread/run registry pickle).
+      # Without this every redeploy wipes the chat list — the registry
+      # lives in /app/.langgraph_api, not in the SQLite checkpointer.
+      - backend-langgraph-api:/app/.langgraph_api
       # Host Docker daemon so nmap / python_sandbox can spawn their
       # short-lived tool containers. NOTE: this is root-equivalent access to
       # the host; required by design for the pentest tools. Remove this mount
@@ -90,6 +94,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    # Give the LangGraph dev persistence flush loop time to write the
+    # thread/run registry to /app/.langgraph_api on redeploy shutdown.
+    stop_grace_period: 30s
     restart: unless-stopped
     # No `ports:` and no SERVICE_FQDN_* — strictly internal on purpose.
 
@@ -113,3 +120,4 @@ services:
 volumes:
   backend-data:
   backend-reports:
+  backend-langgraph-api:

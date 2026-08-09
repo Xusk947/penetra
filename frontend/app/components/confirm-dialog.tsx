@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 
 import { Button } from "~/components/ui/button"
+import { useI18n } from "~/lib/i18n"
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -18,11 +19,12 @@ export function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmText = "Удалить",
-  cancelText = "Отмена",
+  confirmText,
+  cancelText,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useI18n()
   useEffect(() => {
     if (!isOpen) return
 
@@ -50,10 +52,10 @@ export function ConfirmDialog({
         <p className="mb-4 text-xs text-muted-foreground">{message}</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onPress={onCancel}>
-            {cancelText}
+            {cancelText ?? t("confirm.cancel")}
           </Button>
           <Button variant="destructive" onPress={onConfirm}>
-            {confirmText}
+            {confirmText ?? t("confirm.delete")}
           </Button>
         </div>
       </div>

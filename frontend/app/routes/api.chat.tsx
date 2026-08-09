@@ -1,14 +1,16 @@
 import type { UIMessage } from "ai"
 import type { ActionFunctionArgs } from "react-router"
 
+import { getLocaleFromRequest, translate, type Locale } from "~/lib/i18n"
+
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:2024"
 
-function buildChatTitle(messages: UIMessage[]): string {
+function buildChatTitle(messages: UIMessage[], locale: Locale): string {
   const firstUser = messages.find((message) => message.role === "user")
-  if (!firstUser) return "Новый чат"
+  if (!firstUser) return translate(locale, "chat.header.new")
 
   const text = extractTextFromUIMessage(firstUser).replace(/\s+/g, " ").trim()
-  if (!text) return "Новый чат"
+  if (!text) return translate(locale, "chat.header.new")
   if (text.length <= 50) return text
   return `${text.slice(0, 47)}…`
 }
@@ -334,13 +336,14 @@ export async function action({ request }: ActionFunctionArgs) {
     team?: string
   }
   const messages = body.messages ?? []
+  const locale = getLocaleFromRequest(request)
 
   if (messages.length === 0) {
-    return createDataStream("Ошибка: не получено ни одного сообщения.")
+    return createDataStream(translate(locale, "error.noMessages"))
   }
 
   const threadId = body.id ?? body.threadId ?? crypto.randomUUID()
-  const title = buildChatTitle(messages)
+  const title = buildChatTitle(messages, locale)
   const backendUrl = process.env.BACKEND_URL ?? DEFAULT_BACKEND_URL
 
   try {
@@ -358,7 +361,10 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!threadResponse.ok) {
       const text = await threadResponse.text()
       return createDataStream(
-        `Ошибка создания треда (${threadResponse.status}): ${text.slice(0, 500)}`
+        translate(locale, "error.threadCreate", {
+          status: threadResponse.status,
+          detail: text.slice(0, 500),
+        })
       )
     }
 
@@ -393,12 +399,15 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!backendResponse.ok) {
       const text = await backendResponse.text()
       return createDataStream(
-        `Ошибка бэкенда (${backendResponse.status}): ${text.slice(0, 500)}`
+        translate(locale, "error.backend", {
+          status: backendResponse.status,
+          detail: text.slice(0, 500),
+        })
       )
     }
 
     if (!backendResponse.body) {
-      return createDataStream("Ошибка: бэкенд не вернул тело ответа.")
+      return createDataStream(translate(locale, "error.noBody"))
     }
 
     const stream = backendResponse.body.pipeThrough(
@@ -416,7 +425,7 @@ export async function action({ request }: ActionFunctionArgs) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return createDataStream(
-      `Не удалось подключиться к бэкенду (${backendUrl}): ${message}. Запусти langgraph dev в папке backend.`
+      translate(locale, "error.connect", { url: backendUrl, message })
     )
   }
 }

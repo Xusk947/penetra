@@ -8,11 +8,13 @@ import {
   UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 
+import { useI18n } from "~/lib/i18n"
 import { TEAMS, useTeam } from "~/lib/team"
 import { cn } from "~/lib/utils"
 
 export function TeamSelect() {
   const { team, setTeam } = useTeam()
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -79,7 +81,7 @@ export function TeamSelect() {
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-xs font-medium">{option.label}</span>
                   <span className="text-[10px] text-muted-foreground">
-                    {option.description}
+                    {t(`team.${option.id}.desc`)}
                   </span>
                 </span>
                 {isActive && (

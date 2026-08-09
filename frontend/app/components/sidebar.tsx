@@ -294,7 +294,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={() => handleSelectThread(thread.id)}
-                      className="flex flex-1 flex-col px-2 py-1.5 text-left text-xs"
+                      className="flex min-w-0 flex-1 flex-col px-2 py-1.5 text-left text-xs"
                       title={thread.title}
                     >
                       <div className="truncate font-medium">{thread.title}</div>
@@ -371,10 +371,10 @@ export function Sidebar({
                   <button
                     type="button"
                     onClick={() => handleSelectReport(report.id)}
-                    className="flex flex-1 flex-col px-2 py-1.5 text-left text-xs"
+                    className="flex min-w-0 flex-1 flex-col px-2 py-1.5 text-left text-xs"
                     title={report.title}
                   >
-                    <div className="flex items-center gap-1 truncate font-medium">
+                    <div className="flex min-w-0 items-center gap-1 font-medium">
                       <span className="truncate">{report.title}</span>
                       {report.verified && (
                         <HugeiconsIcon

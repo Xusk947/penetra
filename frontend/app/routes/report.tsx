@@ -32,6 +32,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card"
+import { useI18n, type TranslateFn } from "~/lib/i18n"
 import { useTeam } from "~/lib/team"
 import { cn } from "~/lib/utils"
 
@@ -237,67 +238,35 @@ function parseReport(markdown: string): Finding[] {
   return findings
 }
 
-const SEVERITY_INFO: Record<
-  string,
-  { label: string; className: string; description: string }
-> = {
-  critical: {
-    label: "Критический",
-    className: "bg-red-600 text-white",
-    description:
-      "Максимальный риск: компрометация системы, удалённое выполнение кода, полный доступ к данным.",
-  },
-  high: {
-    label: "Высокий",
-    className: "bg-orange-500 text-white",
-    description:
-      "Серьёзный риск: раскрытие конфиденциальных данных, повышение привилегий.",
-  },
-  medium: {
-    label: "Средний",
-    className: "bg-amber-500 text-black",
-    description:
-      "Умеренный риск: требует дополнительных условий или имеет ограниченное воздействие.",
-  },
-  low: {
-    label: "Низкий",
-    className: "bg-blue-500 text-white",
-    description:
-      "Низкий риск: сложная эксплуатация или минимальные последствия.",
-  },
-  info: {
-    label: "Инфо",
-    className: "bg-muted text-muted-foreground",
-    description:
-      "Информационная находка: прямой угрозы нет, но полезна для понимания системы.",
-  },
+const SEVERITY_CLASS: Record<string, string> = {
+  critical: "bg-red-600 text-white",
+  high: "bg-orange-500 text-white",
+  medium: "bg-amber-500 text-black",
+  low: "bg-blue-500 text-white",
+  info: "bg-muted text-muted-foreground",
 }
 
-function getSeverity(severity: string) {
-  return (
-    SEVERITY_INFO[severity.toLowerCase()] ?? {
-      label: severity,
-      className: "bg-muted text-muted-foreground",
-      description: "Неизвестная метка серьёзности.",
+function getSeverity(severity: string, t: TranslateFn) {
+  const key = severity.toLowerCase()
+  if (key in SEVERITY_CLASS) {
+    return {
+      label: t(`severity.${key}`),
+      className: SEVERITY_CLASS[key],
+      description: t(`severity.${key}.desc`),
     }
-  )
-}
-
-const LABEL_MAP: Record<string, string> = {
-  Agent: "Агент",
-  Tool: "Инструмент",
-  Category: "Категория",
-  Confidence: "Уверенность",
-  CWE: "CWE",
+  }
+  return {
+    label: severity,
+    className: "bg-muted text-muted-foreground",
+    description: t("severity.unknown.desc"),
+  }
 }
 
 function FieldBadge({ label, value }: { label: string; value?: string }) {
   if (!value) return null
   return (
     <span className="inline-flex items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px]">
-      <span className="text-muted-foreground">
-        {LABEL_MAP[label] ?? label}:
-      </span>
+      <span className="text-muted-foreground">{label}:</span>
       <span className="ml-0.5 font-medium">{value}</span>
     </span>
   )
@@ -320,30 +289,31 @@ function SimpleTooltip({
   )
 }
 
-function formatFinding(finding: Finding): string {
+function formatFinding(finding: Finding, t: TranslateFn): string {
   const lines: string[] = []
   lines.push(`${finding.findingId ?? finding.id}: ${finding.title}`)
-  const severity = getSeverity(finding.severity)
-  lines.push(`Серьёзность: ${severity.label}`)
-  if (finding.score) lines.push(`Score: ${finding.score}`)
-  if (finding.agent) lines.push(`Агент: ${finding.agent}`)
-  if (finding.tool) lines.push(`Инструмент: ${finding.tool}`)
-  if (finding.category) lines.push(`Категория: ${finding.category}`)
-  if (finding.confidence) lines.push(`Уверенность: ${finding.confidence}`)
-  if (finding.cwe) lines.push(`CWE: ${finding.cwe}`)
+  const severity = getSeverity(finding.severity, t)
+  lines.push(`${t("field.severity")}: ${severity.label}`)
+  if (finding.score) lines.push(`${t("field.score")}: ${finding.score}`)
+  if (finding.agent) lines.push(`${t("field.agent")}: ${finding.agent}`)
+  if (finding.tool) lines.push(`${t("field.tool")}: ${finding.tool}`)
+  if (finding.category) lines.push(`${t("field.category")}: ${finding.category}`)
+  if (finding.confidence)
+    lines.push(`${t("field.confidence")}: ${finding.confidence}`)
+  if (finding.cwe) lines.push(`${t("field.cwe")}: ${finding.cwe}`)
   lines.push("")
-  lines.push("Описание:")
+  lines.push(`${t("section.description")}:`)
   lines.push(finding.description)
   if (finding.trace.length > 0) {
     lines.push("")
-    lines.push("Шаги:")
+    lines.push(`${t("section.steps")}:`)
     finding.trace.forEach((step, idx) => {
       lines.push(`${idx + 1}. ${step}`)
     })
   }
   if (finding.remediation) {
     lines.push("")
-    lines.push("Рекомендации:")
+    lines.push(`${t("section.remediation")}:`)
     lines.push(finding.remediation)
   }
   return lines.join("\n")
@@ -373,6 +343,7 @@ export default function Report() {
   const params = useParams()
   const { report } = useLoaderData() as { report: ReportData | null }
   const { team } = useTeam()
+  const { t, dateTag } = useI18n()
   const revalidator = useRevalidator()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [copied, setCopied] = useState<Record<string, boolean>>({})
@@ -385,7 +356,7 @@ export default function Report() {
     return (
       <div className="relative flex h-full w-full max-w-3xl flex-col items-center justify-center rounded-[1.75rem] bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">
-          Выберите репорт в боковой панели
+          {t("report.selectPrompt")}
         </p>
       </div>
     )
@@ -394,7 +365,7 @@ export default function Report() {
   if (!report) {
     return (
       <div className="relative flex h-full w-full max-w-3xl flex-col items-center justify-center rounded-[1.75rem] bg-card p-8 text-center">
-        <p className="text-sm text-muted-foreground">Репорт не найден</p>
+        <p className="text-sm text-muted-foreground">{t("report.notFound")}</p>
       </div>
     )
   }
@@ -457,7 +428,7 @@ export default function Report() {
       revalidator.revalidate()
     } catch (error) {
       setActionError(
-        error instanceof Error ? error.message : "Не удалось сохранить репорт"
+        error instanceof Error ? error.message : t("report.saveError")
       )
     } finally {
       setSaving(false)
@@ -479,9 +450,7 @@ export default function Report() {
       revalidator.revalidate()
     } catch (error) {
       setActionError(
-        error instanceof Error
-          ? error.message
-          : "Не удалось обновить статус верификации"
+        error instanceof Error ? error.message : t("report.verifyError")
       )
     } finally {
       setVerifying(false)
@@ -494,7 +463,7 @@ export default function Report() {
 
   const copyFinding = async (finding: Finding) => {
     try {
-      await navigator.clipboard.writeText(formatFinding(finding))
+      await navigator.clipboard.writeText(formatFinding(finding, t))
       setCopied((prev) => ({ ...prev, [finding.id]: true }))
       setTimeout(() => {
         setCopied((prev) => ({ ...prev, [finding.id]: false }))
@@ -520,15 +489,17 @@ export default function Report() {
               className="flex shrink-0 items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
               title={
                 report.verified_at
-                  ? `Проверено вручную: ${new Date(report.verified_at).toLocaleString("ru-RU")}`
-                  : "Проверено вручную Admin Team"
+                  ? t("report.verifiedTooltipAt", {
+                      date: new Date(report.verified_at).toLocaleString(dateTag),
+                    })
+                  : t("report.verifiedTooltip")
               }
             >
               <HugeiconsIcon
                 icon={CheckmarkBadge01Icon}
                 className="size-3.5"
               />
-              Проверено Admin Team
+              {t("report.verifiedByAdmin")}
             </span>
           )}
         </div>
@@ -544,13 +515,13 @@ export default function Report() {
                   ? "border-primary bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
-              title="Отметить репорт как официально проверенный Admin Team"
+              title={t("report.verifiedTooltip")}
             >
               <HugeiconsIcon
                 icon={verifying ? Loading01Icon : CheckmarkBadge01Icon}
                 className={cn("size-3.5", verifying && "animate-spin")}
               />
-              {report.verified ? "Снять проверку" : "Проверено"}
+              {report.verified ? t("report.unverify") : t("report.verify")}
             </button>
           )}
           {team.canEditReports && (
@@ -565,7 +536,7 @@ export default function Report() {
               )}
             >
               <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
-              {editing ? "Просмотр" : "Редактировать"}
+              {editing ? t("report.view") : t("report.edit")}
             </button>
           )}
           <button
@@ -605,7 +576,7 @@ export default function Report() {
           )}
 
           {findings.map((finding) => {
-            const severity = getSeverity(finding.severity)
+            const severity = getSeverity(finding.severity, t)
             return (
               <Card
                 key={finding.id}
@@ -653,8 +624,8 @@ export default function Report() {
                           copyFinding(finding)
                         }}
                         className="flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        aria-label="Скопировать уязвимость"
-                        title="Скопировать уязвимость"
+                        aria-label={t("report.copyFinding")}
+                        title={t("report.copyFinding")}
                       >
                         <HugeiconsIcon
                           icon={copied[finding.id] ? CheckIcon : Copy01Icon}
@@ -666,22 +637,28 @@ export default function Report() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-xs">
                   <div className="flex flex-wrap gap-1">
-                    <FieldBadge label="Agent" value={finding.agent} />
-                    <FieldBadge label="Tool" value={finding.tool} />
-                    <FieldBadge label="Category" value={finding.category} />
-                    <FieldBadge label="Confidence" value={finding.confidence} />
-                    <FieldBadge label="CWE" value={finding.cwe} />
+                    <FieldBadge label={t("field.agent")} value={finding.agent} />
+                    <FieldBadge label={t("field.tool")} value={finding.tool} />
+                    <FieldBadge
+                      label={t("field.category")}
+                      value={finding.category}
+                    />
+                    <FieldBadge
+                      label={t("field.confidence")}
+                      value={finding.confidence}
+                    />
+                    <FieldBadge label={t("field.cwe")} value={finding.cwe} />
                   </div>
                   <div>
                     <div className="mb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                      Описание
+                      {t("section.description")}
                     </div>
                     <Markdown>{finding.description}</Markdown>
                   </div>
                   {finding.remediation && (
                     <div>
                       <div className="mb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                        Рекомендации
+                        {t("section.remediation")}
                       </div>
                       <Markdown>{finding.remediation}</Markdown>
                     </div>
@@ -697,7 +674,7 @@ export default function Report() {
                       }}
                       className="flex w-full items-center justify-between text-xs font-medium hover:text-primary"
                     >
-                      <span>Шаги</span>
+                      <span>{t("section.steps")}</span>
                       <HugeiconsIcon
                         icon={ArrowDown01Icon}
                         className={cn(

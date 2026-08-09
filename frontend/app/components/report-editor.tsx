@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
+import { useI18n } from "~/lib/i18n"
 import { cn } from "~/lib/utils"
 
 export interface EditableFinding {
@@ -66,6 +67,7 @@ export function ReportEditor({
   onSave,
   onCancel,
 }: ReportEditorProps) {
+  const { t } = useI18n()
   const [findings, setFindings] = useState<EditableFinding[]>(initialFindings)
 
   const updateFinding = (
@@ -88,7 +90,7 @@ export function ReportEditor({
       ...prev,
       {
         id: newFindingId(),
-        title: "Новая находка",
+        title: t("editor.newFindingTitle"),
         severity: "medium",
         confidence: "certain",
         description: "",
@@ -112,7 +114,7 @@ export function ReportEditor({
           className="flex items-center gap-1 text-xs"
         >
           <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
-          Добавить находку
+          {t("editor.addFinding")}
         </Button>
         <div className="flex items-center gap-2">
           <Button
@@ -122,7 +124,7 @@ export function ReportEditor({
             className="flex items-center gap-1 text-xs"
           >
             <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
-            Отмена
+            {t("editor.cancel")}
           </Button>
           <Button
             onPress={() => onSave(findings)}
@@ -133,14 +135,14 @@ export function ReportEditor({
               icon={saving ? Loading01Icon : FloppyDiskIcon}
               className={cn("size-3.5", saving && "animate-spin")}
             />
-            Сохранить
+            {t("editor.save")}
           </Button>
         </div>
       </div>
 
       {findings.length === 0 && (
         <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">
-          Нет находок — добавьте первую вручную
+          {t("editor.empty")}
         </div>
       )}
 
@@ -156,7 +158,7 @@ export function ReportEditor({
                 onChange={(event) =>
                   updateFinding(finding.id, { title: event.target.value })
                 }
-                placeholder="Название находки"
+                placeholder={t("editor.titlePlaceholder")}
                 className="flex-1"
               />
               <select
@@ -165,7 +167,7 @@ export function ReportEditor({
                   updateFinding(finding.id, { severity: event.target.value })
                 }
                 className={selectClassName}
-                aria-label="Серьёзность"
+                aria-label={t("editor.severity")}
               >
                 {SEVERITIES.map((severity) => (
                   <option key={severity} value={severity}>
@@ -177,8 +179,8 @@ export function ReportEditor({
                 type="button"
                 onClick={() => removeFinding(finding.id)}
                 className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
-                aria-label="Удалить находку"
-                title="Удалить находку"
+                aria-label={t("editor.removeFinding")}
+                title={t("editor.removeFinding")}
               >
                 <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
               </button>
@@ -190,7 +192,7 @@ export function ReportEditor({
           <CardContent className="space-y-3 text-xs">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div>
-                <FieldLabel>Агент</FieldLabel>
+                <FieldLabel>{t("field.agent")}</FieldLabel>
                 <Input
                   value={finding.agent}
                   onChange={(event) =>
@@ -200,7 +202,7 @@ export function ReportEditor({
                 />
               </div>
               <div>
-                <FieldLabel>Инструмент</FieldLabel>
+                <FieldLabel>{t("field.tool")}</FieldLabel>
                 <Input
                   value={finding.tool}
                   onChange={(event) =>
@@ -210,7 +212,7 @@ export function ReportEditor({
                 />
               </div>
               <div>
-                <FieldLabel>Категория</FieldLabel>
+                <FieldLabel>{t("field.category")}</FieldLabel>
                 <Input
                   value={finding.category}
                   onChange={(event) =>
@@ -220,7 +222,7 @@ export function ReportEditor({
                 />
               </div>
               <div>
-                <FieldLabel>Уверенность</FieldLabel>
+                <FieldLabel>{t("field.confidence")}</FieldLabel>
                 <select
                   value={finding.confidence}
                   onChange={(event) =>
@@ -229,7 +231,7 @@ export function ReportEditor({
                     })
                   }
                   className={cn(selectClassName, "w-full")}
-                  aria-label="Уверенность"
+                  aria-label={t("field.confidence")}
                 >
                   {CONFIDENCES.map((confidence) => (
                     <option key={confidence} value={confidence}>
@@ -239,7 +241,7 @@ export function ReportEditor({
                 </select>
               </div>
               <div>
-                <FieldLabel>Score (1–5)</FieldLabel>
+                <FieldLabel>{t("editor.scoreLabel")}</FieldLabel>
                 <Input
                   type="number"
                   min={1}
@@ -262,7 +264,7 @@ export function ReportEditor({
                 />
               </div>
               <div>
-                <FieldLabel>CWE</FieldLabel>
+                <FieldLabel>{t("field.cwe")}</FieldLabel>
                 <Input
                   value={finding.cwe}
                   onChange={(event) =>
@@ -274,7 +276,7 @@ export function ReportEditor({
             </div>
 
             <div>
-              <FieldLabel>Описание</FieldLabel>
+              <FieldLabel>{t("section.description")}</FieldLabel>
               <Textarea
                 value={finding.description}
                 onChange={(event) =>
@@ -282,12 +284,12 @@ export function ReportEditor({
                     description: event.target.value,
                   })
                 }
-                placeholder="Описание уязвимости (markdown)"
+                placeholder={t("editor.descPlaceholder")}
               />
             </div>
 
             <div>
-              <FieldLabel>Шаги (по одному на строку)</FieldLabel>
+              <FieldLabel>{t("editor.stepsLabel")}</FieldLabel>
               <Textarea
                 value={finding.steps.join("\n")}
                 onChange={(event) =>
@@ -303,7 +305,7 @@ export function ReportEditor({
             </div>
 
             <div>
-              <FieldLabel>Рекомендации</FieldLabel>
+              <FieldLabel>{t("section.remediation")}</FieldLabel>
               <Textarea
                 value={finding.remediation}
                 onChange={(event) =>
@@ -311,7 +313,7 @@ export function ReportEditor({
                     remediation: event.target.value,
                   })
                 }
-                placeholder="Как исправить (markdown)"
+                placeholder={t("editor.remPlaceholder")}
               />
             </div>
           </CardContent>

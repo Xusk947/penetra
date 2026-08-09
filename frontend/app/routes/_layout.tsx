@@ -6,9 +6,11 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Menu01Icon } from "@hugeicons/core-free-icons"
 
 import { Sidebar } from "~/components/sidebar"
+import { useI18n } from "~/lib/i18n"
 import { TeamProvider } from "~/lib/team"
 
 export default function Layout() {
+  const { t } = useI18n()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const toggleSidebar = () => setSidebarOpen((prev) => !prev)
 
@@ -20,7 +22,7 @@ export default function Layout() {
             type="button"
             onClick={toggleSidebar}
             className="flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-muted"
-            aria-label="Боковое меню"
+            aria-label={t("sidebar.menu")}
           >
             <HugeiconsIcon icon={Menu01Icon} className="size-5" />
           </button>

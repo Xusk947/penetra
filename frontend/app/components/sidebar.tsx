@@ -13,10 +13,12 @@ import {
 } from "@hugeicons/core-free-icons"
 
 import { ConfirmDialog } from "~/components/confirm-dialog"
+import { LanguageSwitcher } from "~/components/language-switcher"
 import { TeamSelect } from "~/components/team-select"
 import { Button } from "~/components/ui/button"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { Skeleton } from "~/components/ui/skeleton"
+import { useI18n } from "~/lib/i18n"
 import { useTeam } from "~/lib/team"
 import { cn } from "~/lib/utils"
 
@@ -77,6 +79,7 @@ export function Sidebar({
 }) {
   const navigate = useNavigate()
   const { team } = useTeam()
+  const { t, dateTag } = useI18n()
   const { tab, threadId, reportId, path } = useActiveRoute()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [reports, setReports] = useState<ReportItem[]>([])
@@ -190,7 +193,7 @@ export function Sidebar({
           type="button"
           onClick={onToggle}
           className="flex items-center justify-center rounded-md p-2 text-foreground hover:bg-muted"
-          aria-label="Открыть боковую панель"
+          aria-label={t("sidebar.open")}
         >
           <HugeiconsIcon icon={Menu01Icon} className="size-5" />
         </button>
@@ -209,7 +212,7 @@ export function Sidebar({
             type="button"
             onClick={onToggle}
             className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Свернуть боковую панель"
+            aria-label={t("sidebar.collapse")}
           >
             <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
           </button>
@@ -231,7 +234,7 @@ export function Sidebar({
             )}
           >
             <HugeiconsIcon icon={Chat01Icon} className="size-3.5" />
-            Чат
+            {t("nav.chat")}
           </button>
           <button
             type="button"
@@ -244,21 +247,21 @@ export function Sidebar({
             )}
           >
             <HugeiconsIcon icon={File01Icon} className="size-3.5" />
-            Репорты
+            {t("nav.reports")}
           </button>
         </div>
       </div>
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}
-        title="Подтвердите удаление"
+        title={t("sidebar.confirmDeleteTitle")}
         message={
           deleteTarget
-            ? `Точно удалить «${deleteTarget.title}»? Действие необратимо.`
+            ? t("sidebar.confirmDeleteMessage", { title: deleteTarget.title })
             : ""
         }
-        confirmText="Удалить"
-        cancelText="Отмена"
+        confirmText={t("confirm.delete")}
+        cancelText={t("confirm.cancel")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
@@ -271,7 +274,7 @@ export function Sidebar({
               className="w-full"
               onPress={handleNewChat}
             >
-              Новый чат
+              {t("sidebar.newChat")}
             </Button>
           </div>
           <ScrollArea className="flex-1">
@@ -291,7 +294,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={() => handleSelectThread(thread.id)}
-                      className="flex flex-1 flex-col px-2 py-1.5 text-left text-xs"
+                      className="flex min-w-0 flex-1 flex-col px-2 py-1.5 text-left text-xs"
                       title={thread.title}
                     >
                       <div className="truncate font-medium">{thread.title}</div>
@@ -301,7 +304,7 @@ export function Sidebar({
                           isActive && "text-primary-foreground"
                         )}
                       >
-                        {new Date(thread.updatedAt).toLocaleString("ru-RU", {
+                        {new Date(thread.updatedAt).toLocaleString(dateTag, {
                           day: "2-digit",
                           month: "2-digit",
                           hour: "2-digit",
@@ -325,8 +328,8 @@ export function Sidebar({
                             ? "text-primary-foreground hover:text-white"
                             : "text-muted-foreground hover:text-destructive"
                         )}
-                        aria-label="Удалить чат"
-                        title="Удалить чат"
+                        aria-label={t("sidebar.deleteChat")}
+                        title={t("sidebar.deleteChat")}
                       >
                         <HugeiconsIcon
                           icon={Delete01Icon}
@@ -342,7 +345,7 @@ export function Sidebar({
 
               {threads.length === 0 && !loadingThreads && (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  Нет чатов
+                  {t("sidebar.noChats")}
                 </div>
               )}
             </div>
@@ -368,10 +371,10 @@ export function Sidebar({
                   <button
                     type="button"
                     onClick={() => handleSelectReport(report.id)}
-                    className="flex flex-1 flex-col px-2 py-1.5 text-left text-xs"
+                    className="flex min-w-0 flex-1 flex-col px-2 py-1.5 text-left text-xs"
                     title={report.title}
                   >
-                    <div className="flex items-center gap-1 truncate font-medium">
+                    <div className="flex min-w-0 items-center gap-1 font-medium">
                       <span className="truncate">{report.title}</span>
                       {report.verified && (
                         <HugeiconsIcon
@@ -389,14 +392,14 @@ export function Sidebar({
                         isActive && "text-primary-foreground"
                       )}
                     >
-                      {new Date(report.created_at).toLocaleString("ru-RU", {
+                      {new Date(report.created_at).toLocaleString(dateTag, {
                         day: "2-digit",
                         month: "2-digit",
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
                       {report.findings_count > 0
-                        ? ` · ${report.findings_count} находок`
+                        ? ` · ${t("sidebar.findings", { count: report.findings_count })}`
                         : ""}
                     </div>
                   </button>
@@ -416,8 +419,8 @@ export function Sidebar({
                           ? "text-primary-foreground hover:text-white"
                           : "text-muted-foreground hover:text-destructive"
                       )}
-                      aria-label="Удалить репорт"
-                      title="Удалить репорт"
+                      aria-label={t("sidebar.deleteReport")}
+                      title={t("sidebar.deleteReport")}
                     >
                       <HugeiconsIcon icon={Delete01Icon} className="size-3.5" />
                     </button>
@@ -430,12 +433,14 @@ export function Sidebar({
 
             {reports.length === 0 && !loadingReports && (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                Нет репортов
+                {t("sidebar.noReports")}
               </div>
             )}
           </div>
         </ScrollArea>
       )}
+
+      <LanguageSwitcher />
     </aside>
   )
 }

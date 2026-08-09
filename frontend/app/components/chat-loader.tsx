@@ -2,16 +2,10 @@ import { useRef } from "react"
 import { gsap } from "gsap"
 import { useGSAP } from "@gsap/react"
 
+import { useI18n } from "~/lib/i18n"
 import { cn } from "~/lib/utils"
 
 export type ChatLoaderStatus = "submitted" | "streaming" | "ready" | "error"
-
-const statusLabel: Record<ChatLoaderStatus, string> = {
-  submitted: "Думаю…",
-  streaming: "Печатаю…",
-  ready: "",
-  error: "",
-}
 
 export function ChatLoader({
   status,
@@ -22,7 +16,14 @@ export function ChatLoader({
   label?: string
   className?: string
 }) {
-  const label = labelProp ?? statusLabel[status] ?? "Загрузка…"
+  const { t } = useI18n()
+  const statusLabel: Record<ChatLoaderStatus, string> = {
+    submitted: t("loader.thinking"),
+    streaming: t("loader.typing"),
+    ready: "",
+    error: "",
+  }
+  const label = labelProp ?? statusLabel[status] ?? t("loader.loading")
   const containerRef = useRef<HTMLDivElement>(null)
 
   useGSAP(

@@ -13,7 +13,6 @@ export type TeamId = "admin" | "enterprise" | "client"
 export interface Team {
   id: TeamId
   label: string
-  description: string
   /** May ask the chat agent to run pentests / generate reports. */
   canRunScans: boolean
   /** May manually edit report findings and add new ones. */
@@ -28,7 +27,6 @@ export const TEAMS: Team[] = [
   {
     id: "admin",
     label: "Admin Team",
-    description: "Сканы, редактирование и верификация репортов",
     canRunScans: true,
     canEditReports: true,
     canVerify: true,
@@ -37,7 +35,6 @@ export const TEAMS: Team[] = [
   {
     id: "enterprise",
     label: "Enterprise Team",
-    description: "Запуск сканов и генерация репортов",
     canRunScans: true,
     canEditReports: false,
     canVerify: false,
@@ -46,7 +43,6 @@ export const TEAMS: Team[] = [
   {
     id: "client",
     label: "Client Team",
-    description: "Чат и просмотр репортов, без запуска сканов",
     canRunScans: false,
     canEditReports: false,
     canVerify: false,

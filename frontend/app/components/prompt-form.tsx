@@ -6,6 +6,7 @@ import { useRef, type FormEvent, type KeyboardEvent } from "react"
 
 import { Button } from "~/components/ui/button"
 import { Textarea } from "~/components/ui/textarea"
+import { useI18n } from "~/lib/i18n"
 import { cn } from "~/lib/utils"
 
 interface PromptFormProps {
@@ -22,9 +23,10 @@ export function PromptForm({
   onChange,
   onSubmit,
   disabled = false,
-  placeholder = "Напиши запрос...",
+  placeholder,
   className,
 }: PromptFormProps) {
+  const { t } = useI18n()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -48,7 +50,7 @@ export function PromptForm({
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("prompt.default")}
         disabled={disabled}
         rows={1}
         className="min-h-0 flex-1 resize-none rounded-2xl border-0 bg-transparent px-3 py-2.5 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -57,7 +59,7 @@ export function PromptForm({
         type="submit"
         size="icon"
         isDisabled={disabled || !value.trim()}
-        aria-label="Отправить"
+        aria-label={t("prompt.send")}
         className="size-9 rounded-full"
       >
         <HugeiconsIcon icon={ArrowUp01Icon} className="size-4" />

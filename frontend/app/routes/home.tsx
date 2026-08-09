@@ -26,6 +26,7 @@ import {
   buildToolResultMap,
   langGraphMessageToUIMessage,
 } from "~/lib/messages"
+import { useI18n } from "~/lib/i18n"
 import { useTeam } from "~/lib/team"
 import { cn } from "~/lib/utils"
 
@@ -49,10 +50,11 @@ function PlainText({ text }: { text: string }) {
 }
 
 function ChatHeader({ title }: { title: string | null }) {
+  const { t } = useI18n()
   return (
     <div className="flex items-center bg-card p-3">
       <div className="truncate font-heading text-sm font-medium">
-        {title?.trim() || "Новый чат"}
+        {title?.trim() || t("chat.header.new")}
       </div>
     </div>
   )
@@ -86,11 +88,7 @@ function isAgentUpdateData(data: unknown): data is AgentUpdateData {
   )
 }
 
-const toolNameLabels: Record<string, string> = {
-  run_pentest: "Тест по поиску уязвимостей",
-  run_osint: "OSINT-разведка",
-  run_research: "Исследование",
-}
+const KNOWN_TOOLS = ["run_pentest", "run_osint", "run_research"]
 
 function formatToolInput(input: Record<string, unknown>) {
   const entries: [string, string][] = []
@@ -112,9 +110,12 @@ function formatToolInput(input: Record<string, unknown>) {
 }
 
 function ToolInvocation({ part }: { part: Record<string, unknown> }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const toolName = String(part.type).replace(/^tool-/, "") || "tool"
-  const toolLabel = toolNameLabels[toolName] ?? toolName
+  const toolLabel = KNOWN_TOOLS.includes(toolName)
+    ? t(`tool.${toolName}`)
+    : toolName
   const state = String((part.state as string) ?? "input-available")
   const input = (part.input as Record<string, unknown>) ?? {}
   const output = part.output
@@ -130,7 +131,7 @@ function ToolInvocation({ part }: { part: Record<string, unknown> }) {
   const isError = state === "output-error" || Boolean(errorText)
   const isRunning = !isDone && !isError
 
-  const statusText = isRunning ? `Запущен ${toolLabel}` : toolLabel
+  const statusText = isRunning ? t("tool.running", { tool: toolLabel }) : toolLabel
 
   const outputString =
     typeof output === "string"
@@ -183,7 +184,7 @@ function ToolInvocation({ part }: { part: Record<string, unknown> }) {
           {inputEntries.length > 0 && (
             <div>
               <div className="mb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                Входные параметры
+                {t("tool.inputParams")}
               </div>
               <div className="space-y-1 rounded bg-background p-2 text-[11px]">
                 {inputEntries.map(([key, value]) => (
@@ -205,7 +206,7 @@ function ToolInvocation({ part }: { part: Record<string, unknown> }) {
           {hasOutput && outputString && (
             <div>
               <div className="mb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                Результат
+                {t("tool.result")}
               </div>
               <div className="max-h-96 overflow-y-auto rounded bg-background p-2">
                 {outputString.startsWith("#") ||
@@ -271,12 +272,13 @@ function groupAgentParts(parts: unknown[]): AgentGroup[] {
 }
 
 function AgentCallCard({ group }: { group: AgentGroup }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(true)
   const { agent, start, steps, end } = group
   const isDone = !!end
   const status = isDone
-    ? `завершён · ${end?.findings_count ?? 0} находок`
-    : "в работе…"
+    ? t("agent.doneWithFindings", { count: end?.findings_count ?? 0 })
+    : t("agent.inProgress")
 
   return (
     <div className="my-2 rounded-xl border border-border bg-muted/40 p-3 text-xs">
@@ -318,7 +320,7 @@ function AgentCallCard({ group }: { group: AgentGroup }) {
                           {step.finding.severity ?? "finding"}
                         </span>
                         {": "}
-                        {step.finding.title ?? "Находка"}
+                        {step.finding.title ?? t("agent.finding")}
                         {step.finding.id && (
                           <span className="ml-1 text-muted-foreground">
                             ({step.finding.id})
@@ -365,10 +367,10 @@ function AgentCallCard({ group }: { group: AgentGroup }) {
                       )}
                     >
                       {step.status === "error"
-                        ? "ошибка"
+                        ? t("status.error")
                         : step.status === "done"
-                          ? "готово"
-                          : "работа"}
+                          ? t("status.done")
+                          : t("status.working")}
                     </span>
                   </div>
                 )
@@ -378,11 +380,11 @@ function AgentCallCard({ group }: { group: AgentGroup }) {
 
           {end && (
             <div className="text-[11px] text-muted-foreground">
-              Агент {end.agent} завершил работу
+              {t("agent.finished", { agent: end.agent })}
               {end.findings_count !== undefined
-                ? `, найдено находок: ${end.findings_count}`
+                ? t("agent.findingsSuffix", { count: end.findings_count })
                 : ""}
-              {end.error ? ` · ошибка: ${end.error}` : ""}
+              {end.error ? t("agent.errorSuffix", { error: end.error }) : ""}
             </div>
           )}
         </div>
@@ -392,7 +394,8 @@ function AgentCallCard({ group }: { group: AgentGroup }) {
 }
 
 function extractReportAttachments(
-  parts: unknown[]
+  parts: unknown[],
+  fallbackTitle: string
 ): { reportId: string; title: string }[] {
   const seen = new Set<string>()
   const result: { reportId: string; title: string }[] = []
@@ -412,9 +415,7 @@ function extractReportAttachments(
     seen.add(reportId)
 
     const titleMatch = output.match(/^#\s*(.+)$/m)
-    const title = titleMatch
-      ? titleMatch[1].trim()
-      : "Отчёт о тесте на проникновение"
+    const title = titleMatch ? titleMatch[1].trim() : fallbackTitle
 
     result.push({ reportId, title })
   }
@@ -429,6 +430,7 @@ function ReportAttachment({
   reportId: string
   title: string
 }) {
+  const { t } = useI18n()
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-2.5 text-xs">
       <HugeiconsIcon
@@ -444,7 +446,7 @@ function ReportAttachment({
       <div className="flex items-center gap-1">
         <Link
           to={`/reports/${reportId}`}
-          title="Открыть отчёт"
+          title={t("attachment.open")}
           className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
@@ -452,7 +454,7 @@ function ReportAttachment({
         <a
           href={`/api/reports/${reportId}/download?format=md`}
           download
-          title="Скачать Markdown"
+          title={t("attachment.downloadMd")}
           className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <HugeiconsIcon icon={Download01Icon} className="size-3.5" />
@@ -463,6 +465,7 @@ function ReportAttachment({
 }
 
 function MessageContent({ message }: { message: UIMessage }) {
+  const { t } = useI18n()
   const parts = Array.isArray(message.parts) ? message.parts : []
 
   if (message.role === "user") {
@@ -476,7 +479,10 @@ function MessageContent({ message }: { message: UIMessage }) {
   }
 
   const agentGroups = groupAgentParts(parts)
-  const reportAttachments = extractReportAttachments(parts)
+  const reportAttachments = extractReportAttachments(
+    parts,
+    t("report.defaultTitle")
+  )
 
   return (
     <div className="space-y-1">
@@ -509,7 +515,7 @@ function MessageContent({ message }: { message: UIMessage }) {
       {reportAttachments.length > 0 && (
         <div className="mt-3 space-y-2">
           <div className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-            Прикреплённые документы
+            {t("attachments.title")}
           </div>
           <div className="space-y-2">
             {reportAttachments.map((attachment) => (
@@ -529,6 +535,7 @@ function MessageContent({ message }: { message: UIMessage }) {
 function ChatPanel({ threadId }: { threadId?: string }) {
   const navigate = useNavigate()
   const { team } = useTeam()
+  const { t } = useI18n()
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [title, setTitle] = useState<string | null>(null)
   const [chatId, setChatId] = useState(() => threadId ?? crypto.randomUUID())
@@ -693,8 +700,8 @@ function ChatPanel({ threadId }: { threadId?: string }) {
             disabled={status !== "ready"}
             placeholder={
               team.canRunScans
-                ? "Что проверим?"
-                : "Можешь проверить систему?"
+                ? t("prompt.placeholderRun")
+                : t("prompt.placeholderNoRun")
             }
           />
         </div>
@@ -746,7 +753,9 @@ function ChatPanel({ threadId }: { threadId?: string }) {
 
               {status === "error" && (
                 <div className="text-center text-sm text-destructive">
-                  Ошибка: {error?.message ?? "Не удалось получить ответ"}
+                  {t("chat.errorPrefix", {
+                    msg: error?.message ?? t("chat.errorFallback"),
+                  })}
                 </div>
               )}
             </div>
@@ -761,8 +770,8 @@ function ChatPanel({ threadId }: { threadId?: string }) {
             disabled={status !== "ready" || !historyLoaded}
             placeholder={
               team.canRunScans
-                ? "Напиши запрос (Enter — отправить, Shift+Enter — новая строка)"
-                : "Спроси про репорты (запуск сканов — только Admin/Enterprise)"
+                ? t("prompt.placeholderRunLong")
+                : t("prompt.placeholderNoRunLong")
             }
           />
         </div>

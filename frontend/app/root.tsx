@@ -5,14 +5,28 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
+  useLoaderData,
+  useRouteLoaderData,
 } from "react-router"
 
 import type { Route } from "./+types/root"
 import "./app.css"
+import {
+  DEFAULT_LOCALE,
+  I18nProvider,
+  getLocaleFromRequest,
+  isLocale,
+} from "~/lib/i18n"
+
+export function loader({ request }: Route.LoaderArgs) {
+  return { locale: getLocaleFromRequest(request) }
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useRouteLoaderData("root") as { locale?: string } | undefined
+  const lang = isLocale(data?.locale) ? data.locale : DEFAULT_LOCALE
   return (
-    <html lang="en">
+    <html lang={lang}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -29,7 +43,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />
+  const { locale } = useLoaderData<typeof loader>()
+  return (
+    <I18nProvider initialLocale={isLocale(locale) ? locale : DEFAULT_LOCALE}>
+      <Outlet />
+    </I18nProvider>
+  )
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
